@@ -6,7 +6,7 @@ from xml.etree import ElementTree
 
 def get_arguments():
     parser = argparse.ArgumentParser(description='Command Line Driven Utility To Enable NETCONF\
-        On SROS Devices And MD-CLI.')
+        And MD-CLI on SROS Devices.')
     parser.add_argument("-n", "--node", help="Target NODE IP", required=True)
     parser.add_argument("-u", "--user", help="SSH Username", required=False, default='admin')
     parser.add_argument("-p", "--port", help="NETCONF TCP Port", required=False, default='830')
