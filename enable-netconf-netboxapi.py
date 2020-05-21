@@ -115,7 +115,7 @@ def router_dict(args,ip,sshpass):
 
 
 def netcbackup(ip, NETCONF_USER, NETCONF_PASS):
-    ''' This functino will establish a netconf connection and pull the running config. It will write a temp file,
+    ''' This function will establish a netconf connection and pull the running config. It will write a temp file,
     read it and convert the XML to a python dictionary. Once parsed, we'll pull the system name of the device
     and create a folder structure by hostname and backup the running config.
     '''

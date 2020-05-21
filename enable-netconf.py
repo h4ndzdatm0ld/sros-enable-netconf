@@ -31,9 +31,9 @@ def send_cmmdz(node_conn,list_of_cmds):
     try:
         x = node_conn.send_config_set(list_of_cmds)
         print(x)
-        
     except Exception as e:
-        print(f"Issue with list of cmdz, {e}")
+        print(f"Issue with set-list of commands. {e}\n\
+Possibly running MD-CLI already.")
 
 def send_single(node_conn, command):
     ''' This function will unpack the dictionary created for the remote host to establish a connection with
@@ -122,6 +122,7 @@ def main():
     
     # Execute Script.
     send_cmmdz(sros_conn, enableNetconf)
+
     # Validate NETCONF is enabled and Operational.
     send_single(sros_conn,'show system netconf')
     # Disconnect from the SSH Connection to our far-end remote device.
@@ -146,6 +147,7 @@ def main():
 
             createFolder(f'Configs/{sys_name}')
             saveFile(f"Configs/{sys_name}/{sys_name}.txt", xmlconfig)
+            print(f"Backed up XML Config: Configs/{sys_name}/{sys_name}.txt")
             
     except Exception as e:
         print(f"Issue with NETCONF connection, {e}")
