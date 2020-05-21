@@ -1,4 +1,4 @@
-import netmiko, ncclient, argparse, getpass, sys, time, xmltodict, os
+import netmiko, ncclient, argparse, getpass, sys, time, xmltodict, os, logging
 from netmiko import ConnectHandler
 from ncclient import manager
 from ncclient.xml_ import *
@@ -13,9 +13,16 @@ def get_arguments():
     args = parser.parse_args()
     return args
 
-# Lets make it easier to send and receive the output to the screen.
-# We'll create a function to pass in a list of commands as arguements.
-
+def netmiko_logging():
+    
+    ''' Netmiko Logging - This creates a Log file (NetmikoLog.txt) under a new 'Logging' folder.. Does not overwrite (a+).
+        Log must end in .txt file as the program won't allow two .log files in the CWD.
+    '''
+    createFolder('Logging')
+    open('Logging/NetmikoLog.txt', 'a+')
+    logging.basicConfig(filename='Logging/NetmikoLog.txt', level=logging.DEBUG)
+    logger = logging.getLogger("netmiko")
+    
 def send_cmmdz(node_conn,list_of_cmds):
     ''' This function will unpack the dictionary created for the remote host to establish a connection with
         and send a LIST of commands. The output will be printed to the screen.
@@ -24,6 +31,7 @@ def send_cmmdz(node_conn,list_of_cmds):
     try:
         x = node_conn.send_config_set(list_of_cmds)
         print(x)
+        
     except Exception as e:
         print(f"Issue with list of cmdz, {e}")
 
@@ -69,6 +77,7 @@ def createFolder(directory):
             os.makedirs(directory)
     except OSError:
         print('Error: Creating directory. ' + directory)
+        
 def main():
     # Extract the Arguements from ARGSPARSE:
     args = get_arguments()
@@ -77,6 +86,9 @@ def main():
     NETCONF_USER = 'netconf'
     NETCONF_PASS = 'NCadmin123'
 
+    # start logging
+    netmiko_logging()
+    
     # # Create a dictionary for our device.
     sros = {
         'device_type': 'alcatel_sros',
@@ -89,50 +101,42 @@ def main():
 
    # Establish a list of pre and post check commands.
     print('Connecting to device and executing script...')
+    
     send_single(sros_conn, 'show system information | match Name')
-    send_single(sros_conn, 'show system netconf | match State')
-
+    
+    enabled = sros_conn.send_command('show system netconf | match State')
+    
     enableNetconf = ['system security profile "netconf" netconf base-op-authorization lock',
-              'system security profile "netconf" netconf base-op-authorization kill-session',
-              f'system security user {NETCONF_USER} access netconf',
-              f'system security user {NETCONF_USER} password {NETCONF_PASS}', 
-              f'system security user {NETCONF_USER} console member {NETCONF_USER}',
-              f'system security user {NETCONF_USER} console member "administrative"', 
-              'system management-interface yang-modules nokia-modules', 
-              'system management-interface yang-modules no base-r13-modules',
-              'system netconf auto-config-save', 
-              'system netconf no shutdown',
-              'system management-interface cli md-cli auto-config-save',
-              'system management-interface configuration-mode model-driven']
+            'system security profile "netconf" netconf base-op-authorization kill-session',
+            f'system security user {NETCONF_USER} access netconf',
+            f'system security user {NETCONF_USER} password {NETCONF_PASS}', 
+            f'system security user {NETCONF_USER} console member {NETCONF_USER}',
+            f'system security user {NETCONF_USER} console member "administrative"', 
+            'system management-interface yang-modules nokia-modules', 
+            'system management-interface yang-modules no base-r13-modules',
+            'system netconf auto-config-save', 
+            'system netconf no shutdown',
+            'system management-interface cli no cli-engine',
+            'system management-interface cli md-cli auto-config-save',
+            'system management-interface configuration-mode model-driven']
     
     # Execute Script.
     send_cmmdz(sros_conn, enableNetconf)
-    
     # Validate NETCONF is enabled and Operational.
     send_single(sros_conn,'show system netconf')
-    
     # Disconnect from the SSH Connection to our far-end remote device.
     # We need to disconnect to open the pipe for python3 to establish netconf connection.
-    
     disconnect(sros_conn)
-    time.sleep(2)
-        
-   
+    
     try:
         # Now let's connect to the device via NETCONF and pull the config to validate.
-
         nc = netconfconn(args, NETCONF_USER, NETCONF_PASS)
-        
         # Grab the running configuration on our device, as an NCElement.
-
         config = nc.get_config(source='running')
-        
         # XML elemnent as a str.
         xmlconfig = to_xml(config.xpath('data')[0])
-
         # Write the running configuration to a temp-file (from the data/configure xpath).
         saveFile('temp-config.xml', xmlconfig)
-        
         # Lets open the XML file, read it, and convert to a python dictionary and extract some info.
         
         with open('temp-config.xml', 'r') as temp:
@@ -140,12 +144,11 @@ def main():
             xml = xmltodict.parse(content)
             sys_name = xml['data']['configure']['system']['name']
 
-            createFolder('Configs')
-            saveFile(f"Configs/{sys_name}.txt", xmlconfig)
+            createFolder(f'Configs/{sys_name}')
+            saveFile(f"Configs/{sys_name}/{sys_name}.txt", xmlconfig)
             
     except Exception as e:
         print(f"Issue with NETCONF connection, {e}")
-    
-    
+        
 if __name__ == "__main__":
     main()
