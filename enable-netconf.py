@@ -24,6 +24,7 @@ def netmiko_logging():
     logger = logging.getLogger("netmiko")
     
 def send_cmmdz(node_conn,list_of_cmds):
+    
     ''' This function will unpack the dictionary created for the remote host to establish a connection with
         and send a LIST of commands. The output will be printed to the screen.
         Establish the 'node_conn' var first by unpacking the device connection dictionary. Pass it in as an args.

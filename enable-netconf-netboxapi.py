@@ -146,6 +146,7 @@ def main():
     # Establish some vars:
     TOKEN = '25dadb1b334048bddd9bc679cd4baf2a59d7a9f5'
     SR7750 = get_ips_netbox('http://192.168.0.34',TOKEN,'7750')
+    print(f"Extracted the following IP's from Netbox: {SR7750}")
 
     # Define the NETCONF USERNAME / PASSWORD:
     NETCONF_USER = 'netconf'
