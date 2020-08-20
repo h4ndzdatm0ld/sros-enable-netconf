@@ -3,6 +3,7 @@ from netmiko import ConnectHandler
 from ncclient import manager
 from ncclient.xml_ import *
 from xml.etree import ElementTree
+import json
 
 def get_arguments():
     parser = argparse.ArgumentParser(description='Command Line Driven Utility To Enable NETCONF\
@@ -30,10 +31,10 @@ def send_cmmdz(node_conn,list_of_cmds):
         Establish the 'node_conn' var first by unpacking the device connection dictionary. Pass it in as an args.
     '''
     try:
-        x = node_conn.send_config_set(list_of_cmds)
+        x = node_conn.send_config_set(list_of_cmds, cmd_verify=False)
         print(x)
     except Exception as e:
-        print(f"Issue with set-list of commands. {e}\n\
+        print(f"{e} Issue with set-list of commands. {e}\n\
 Possibly running MD-CLI already.")
 
 def send_single(node_conn, command):
@@ -96,6 +97,7 @@ def main():
         'host': args.node,
         'username': args.user,
         'password': getpass.getpass(),
+        'response_return': None,
     }
     # Pass in the dict and create the connection.
     sros_conn = net_connect = ConnectHandler(**sros)
@@ -106,48 +108,61 @@ def main():
     send_single(sros_conn, 'show system information | match Name')
     
     enabled = sros_conn.send_command('show system netconf | match State')
-    
-    enableNetconf = ['system security profile "netconf" netconf base-op-authorization lock',
-            'system security profile "netconf" netconf base-op-authorization kill-session',
-            f'system security user {NETCONF_USER} access netconf',
-            f'system security user {NETCONF_USER} password {NETCONF_PASS}', 
-            f'system security user {NETCONF_USER} console member {NETCONF_USER}',
-            f'system security user {NETCONF_USER} console member "administrative"', 
-            'system management-interface yang-modules nokia-modules', 
-            'system management-interface yang-modules no base-r13-modules',
-            'system netconf auto-config-save', 
-            'system netconf no shutdown',
-            'system management-interface cli no cli-engine',
-            'system management-interface cli md-cli auto-config-save',
-            'system management-interface configuration-mode model-driven']
-    
-    # Execute Script.
-    send_cmmdz(sros_conn, enableNetconf)
 
-    # Validate NETCONF is enabled and Operational.
-    send_single(sros_conn,'show system netconf')
-    # Disconnect from the SSH Connection to our far-end remote device.
-    # We need to disconnect to open the pipe for python3 to establish netconf connection.
-    disconnect(sros_conn)
-    
+    if 'Enabled' in enabled:
+        disconnect(sros_conn)
+        print('Netconf already enabled on this device.')
+    else:
+        enableNetconf = [
+                '/configure system security profile "netconf" netconf base-op-authorization lock',
+                '/configure system security profile "netconf" netconf base-op-authorization kill-session',
+                f'/configure system security user netconf access netconf',
+                f'/configure system security user netconf password NCadmin123', 
+                f'/configure system security user netconf console member NCadmin123',
+                f'/configure system security user netconf console member "administrative"',
+                '/configure system management-interface yang-modules nokia-modules', 
+                '/configure system management-interface yang-modules no base-r13-modules',
+                '/configure system netconf auto-config-save', 
+                '/configure system netconf no shutdown',
+                '/configure system management-interface cli no cli-engine',
+                '/configure system management-interface cli md-cli auto-config-save',
+                '/configure system management-interface configuration-mode model-driven']
+        
+        # Execute Script.
+        send_cmmdz(sros_conn, enableNetconf)
+        # Validate NETCONF is enabled and Operational.
+
+        send_single(sros_conn,'show system netconf')
+        # Disconnect from the SSH Connection to our far-end remote device.
+        # We need to disconnect to open the pipe for python3 to establish netconf connection.
+        disconnect(sros_conn)
+        
     try:
         # Now let's connect to the device via NETCONF and pull the config to validate.
         nc = netconfconn(args, NETCONF_USER, NETCONF_PASS)
         # Grab the running configuration on our device, as an NCElement.
-        config = nc.get_config(source='running')
-        # XML elemnent as a str.
-        xmlconfig = to_xml(config.xpath('data')[0])
-        # Write the running configuration to a temp-file (from the data/configure xpath).
-        saveFile('temp-config.xml', xmlconfig)
+        rfilter = """
+            <filter>
+                <configure xmlns="urn:nokia.com:sros:ns:yang:sr:conf">
+                </configure>
+            </filter>
+        """
+        #Retrieve the XML Config 
+        config = nc.get_config(source='running',filter=rfilter)
+        # Close NETCONF session
+        nc.close_session()
+        # Convert XML object to string.
+        j_config = str(config)
+
+        saveFile('temp-config.xml', j_config)
         # Lets open the XML file, read it, and convert to a python dictionary and extract some info.
         
         with open('temp-config.xml', 'r') as temp:
             content = temp.read()
             xml = xmltodict.parse(content)
-            sys_name = xml['data']['configure']['system']['name']
-
+            sys_name = xml['rpc-reply']['data']['configure']['system']['name']
             createFolder(f'Configs/{sys_name}')
-            saveFile(f"Configs/{sys_name}/{sys_name}.txt", xmlconfig)
+            saveFile(f"Configs/{sys_name}/{sys_name}.txt", j_config)
             print(f"Backed up XML Config: Configs/{sys_name}/{sys_name}.txt")
             
     except Exception as e:
