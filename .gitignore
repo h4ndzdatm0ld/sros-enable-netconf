@@ -1,7 +1,8 @@
 # Project specific
-sros_enable_netconf/temp-config.xml
+temp-config.xml
 sros_enable_netconf/backups/*
 logging/*
+backups/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -17,6 +18,7 @@ __pycache__/
 #Configs
 *.txt
 *.cfg
+
 # Visual Studio
 workspace.code-workspace
 

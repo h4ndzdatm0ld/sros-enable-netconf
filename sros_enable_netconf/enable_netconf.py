@@ -1,22 +1,29 @@
+"""Programmatically Enable NETCONF on SROS Device."""
 import argparse
 import getpass
-from xml.etree import ElementTree
-from netmiko import ConnectHandler
+import os
 
 import xmltodict
+from netmiko import ConnectHandler
 
 from sros_enable_netconf.helpers import (
     create_folder,
-    save_file,
-    netmiko_logging,
-    send_single,
     disconnect,
-    netconfconn,
-    send_cmmdz,
+    get_netconf_config,
+    netmiko_logging,
+    save_file,
+    send_commands,
+    send_single,
 )
+
+# Define the NETCONF USERNAME / PASSWORD, PICK UP ENV VARS OR USE DEFAULT.
+NETCONF_USER = os.getenv("NETCONF_USER", "netconf")
+NETCONF_PASS = os.getenv("NETCONF_PASS", "NCadmin123")
+BACKUP_PATH = os.getenv("BACKUP_PATH", "backups")
 
 
 def get_arguments():
+    """Get argparse arguments."""
     parser = argparse.ArgumentParser(
         description="Command Line Driven Utility To Enable NETCONF\
         And MD-CLI on SROS Devices."
@@ -29,16 +36,11 @@ def get_arguments():
 
 
 def main():
+    """Execute main function."""
     # Extract the Arguements from ARGSPARSE:
     args = get_arguments()
-
-    # Define the NETCONF USERNAME / PASSWORD:
-    NETCONF_USER = "netconf"
-    NETCONF_PASS = "NCadmin123"
-
     # start logging
     netmiko_logging()
-
     # Create a dictionary for our device.
     sros = {
         "device_type": "alcatel_sros",
@@ -48,26 +50,21 @@ def main():
         "response_return": None,
     }
     # Pass in the dict and create the connection.
-    sros_conn = net_connect = ConnectHandler(**sros)
-
+    sros_conn = ConnectHandler(**sros)
     # Establish a list of pre and post check commands.
     print("Connecting to device and executing script...")
 
-    send_single(sros_conn, "show system information | match Name")
-
-    enabled = sros_conn.send_command("show system netconf | match State")
-
-    if "Enabled" in enabled:
+    if "Enabled" in send_single(sros_conn, "show system netconf | match State"):
+        print("Netconf already enabled on this device. Disconnecting.")
         disconnect(sros_conn)
-        print("Netconf already enabled on this device.")
     else:
-        enableNetconf = [
+        enable_netconf = [
             '/configure system security profile "netconf" netconf base-op-authorization lock',
             '/configure system security profile "netconf" netconf base-op-authorization kill-session',
-            f"/configure system security user netconf access netconf",
-            f"/configure system security user netconf password NCadmin123",
-            f"/configure system security user netconf console member netconf",
-            f'/configure system security user netconf console member "administrative"',
+            f"/configure system security user netconf access {NETCONF_USER}",
+            f"/configure system security user netconf password {NETCONF_PASS}",
+            f"/configure system security user netconf console member {NETCONF_USER}",
+            "/configure system security user netconf console member 'administrative'",
             "/configure system management-interface yang-modules nokia-modules",
             "/configure system management-interface yang-modules no base-r13-modules",
             "/configure system netconf auto-config-save",
@@ -78,44 +75,22 @@ def main():
         ]
 
         # Execute Script.
-        send_cmmdz(sros_conn, enableNetconf)
+        send_commands(sros_conn, enable_netconf)
         # Validate NETCONF is enabled and Operational.
-
-        send_single(sros_conn, "show system netconf")
+        # send_single(sros_conn, "show system netconf")
         # Disconnect from the SSH Connection to our far-end remote device.
         # We need to disconnect to open the pipe for python3 to establish netconf connection.
         disconnect(sros_conn)
 
     try:
-        # Now let's connect to the device via NETCONF and pull the config to validate.
-        nc = netconfconn(args, NETCONF_USER, NETCONF_PASS)
-        # Grab the running configuration on our device, as an NCElement.
-        rfilter = """
-            <filter>
-                <configure xmlns="urn:nokia.com:sros:ns:yang:sr:conf">
-                </configure>
-            </filter>
-        """
-        # Retrieve the XML Config
-        config = nc.get_config(source="running")
-        # Close NETCONF session
-        nc.close_session()
-        # Convert XML object to string.
-        j_config = str(config)
-        print(j_config)
-        save_file("temp-config.xml", j_config)
-        # Lets open the XML file, read it, and convert to a python dictionary and extract some info.
-
-        with open("temp-config.xml", "r") as temp:
-            content = temp.read()
-            xml = xmltodict.parse(content)
-            sys_name = xml["rpc-reply"]["data"]["configure"]["system"]["name"]
-            create_folder(f"backups/{sys_name}")
-            save_file(f"backups/{sys_name}/{sys_name}.txt", j_config)
-            print(f"Backed up XML Config: backups/{sys_name}/{sys_name}.txt")
-
-    except Exception as e:
-        print(f"Issue with NETCONF connection, {e}")
+        config = get_netconf_config(args, NETCONF_USER, NETCONF_PASS)
+        xml_config = xmltodict.parse(str(config))
+        sys_name = xml_config["rpc-reply"]["data"]["configure"]["system"]["name"]
+        create_folder(f"{BACKUP_PATH}/{sys_name}")
+        save_file(f"backups/{sys_name}/{sys_name}.txt", str(config), mode="w+")
+        print(f"Backed up XML Config: backups/{sys_name}/{sys_name}.txt")
+    except Exception as err_exc:
+        print(f"Error while attempting to get NETCONF config: {err_exc}")
 
 
 if __name__ == "__main__":
