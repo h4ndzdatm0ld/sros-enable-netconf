@@ -1,0 +1,67 @@
+[tool.poetry]
+name = "sros-enable-netconf"
+version = "0.1.0"
+description = "Programmatically enable NETCONF on Nokia SROS."
+authors = ["h4ndzdatm0ld <hugotinoco@icloud.com>"]
+readme = "README.md"
+repository = "https://github.com/h4ndzdatm0ld/sros-enable-netconf"
+keywords = ["sros", "ncclient", "netconf", "network automation", "nokia", "7750"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+argparse = "^1.4.0"
+xmltodict = "^0.12.0"
+netmiko = "^3.4.0"
+ncclient = "^0.6.12"
+ttp = "^0.7.2"
+
+[tool.poetry.dev-dependencies]
+flake8 = "^3.9.2"
+pylint = "^2.10.2"
+pydocstyle = "^6.1.1"
+bandit = "^1.7.0"
+yamllint = "^1.26.3"
+black = "^21.7b0"
+pytest = "^6.2.4"
+ipython = "^7.26.0"
+pytest-cov = "^2.12.1"
+coverage = "^5.5"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests"
+]
+
+[tool.pylint.messages_control]
+# Line length is enforced by Black, so pylint doesn't need to check it.
+# Pylint and Black disagree about how to format multi-line arrays; Black wins.
+disable = """,
+    line-too-long,
+    bad-continuation,
+    """
+
+[tool.pylint.miscellaneous]
+# Don't flag TODO as a failure, let us commit with things that still need to be done in the code
+notes = """,
+    FIXME,
+    XXX,
+    """
+
+[tool.black]
+line-length = 120
+include = '\.pyi?$'
+exclude = '''
+        /(
+          \.git
+        | \.tox
+        | \.venv
+        | env/
+        | _build
+        | build
+        | dist
+        )/
+    '''
