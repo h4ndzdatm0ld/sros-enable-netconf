@@ -13,7 +13,6 @@ argparse = "^1.4.0"
 xmltodict = "^0.12.0"
 netmiko = "^3.4.0"
 ncclient = "^0.6.12"
-ttp = "^0.7.2"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^3.9.2"

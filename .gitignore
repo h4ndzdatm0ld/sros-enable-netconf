@@ -2,6 +2,7 @@
 temp-config.xml
 sros_enable_netconf/backups/*
 logging/*
+backups/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

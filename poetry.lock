@@ -774,14 +774,6 @@ ipython-genutils = "*"
 test = ["pytest"]
 
 [[package]]
-name = "ttp"
-version = "0.7.2"
-description = "Template Text Parser"
-category = "main"
-optional = false
-python-versions = "*"
-
-[[package]]
 name = "typing-extensions"
 version = "3.10.0.0"
 description = "Backported and Experimental Type Hints for Python 3.5+"
@@ -828,7 +820,7 @@ pyyaml = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "05ea57588848bf016596906de31371bfe9e24c23df3c64d0fbaa6d24859e2072"
+content-hash = "886f20f7df37de9e5ac79c255fa62279455c74e0c3b1d23d24ff7e77f380d1dc"
 
 [metadata.files]
 appdirs = [
@@ -1341,9 +1333,6 @@ tomli = [
 traitlets = [
     {file = "traitlets-5.0.5-py3-none-any.whl", hash = "sha256:69ff3f9d5351f31a7ad80443c2674b7099df13cc41fc5fa6e2f6d3b0330b0426"},
     {file = "traitlets-5.0.5.tar.gz", hash = "sha256:178f4ce988f69189f7e523337a3e11d91c786ded9360174a3d9ca83e79bc5396"},
-]
-ttp = [
-    {file = "ttp-0.7.2.tar.gz", hash = "sha256:18c610a35acf4cbea8cb306b82ef0113397591da54f2226baff163959ffb53c3"},
 ]
 typing-extensions = [
     {file = "typing_extensions-3.10.0.0-py2-none-any.whl", hash = "sha256:0ac0f89795dd19de6b97debb0c6af1c70987fd80a2d62d1958f7e56fcc31b497"},

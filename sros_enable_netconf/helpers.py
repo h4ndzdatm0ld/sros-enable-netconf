@@ -2,6 +2,7 @@
 import logging
 import os
 import sys
+from typing import Dict
 
 from ncclient import manager
 
@@ -36,10 +37,7 @@ def save_file(filename: str, contents: str, mode: str):
 
 
 def netmiko_logging():
-
-    """Netmiko Logging - This creates a Log file (NetmikoLog.txt) under a new 'Logging' folder.. Does not overwrite (a+).
-    Log must end in .txt file as the program won't allow two .log files in the CWD.
-    """
+    """Netmiko Logging - This creates a Log file under a new 'Logging' folder."""
     create_folder("logging")
     save_file("logging/netmikolog.txt", "", "a+")
 
@@ -47,7 +45,7 @@ def netmiko_logging():
     logging.getLogger("netmiko")
 
 
-def send_cmmdz(node_conn, list_of_cmds):
+def send_commands(node_conn, list_of_cmds):
 
     """This function will unpack the dictionary created for the remote host to establish a connection with
     and send a LIST of commands. The output will be printed to the screen.
@@ -59,18 +57,23 @@ def send_cmmdz(node_conn, list_of_cmds):
         print(f"{res_err} Issue with set-list of commands")
 
 
-def send_single(node_conn, command):
+def send_single(node_conn, command, use_ttp: bool = False):
     """This function will unpack the dictionary created for the remote host to establish a connection with
     and send a single command. The output will be printed to the screen.
     Establish the 'node_conn' var first by unpacking the device connection dictionary. Pass it in as an args.[]
     """
     try:
-        return node_conn.send_command(command)
+        return node_conn.send_command(command, use_ttp=use_ttp, ttp_template=None)
     except Exception as res_err:
         sys.exit(res_err)
 
 
 def disconnect(node_conn):
+    """[summary]
+
+    Args:
+        node_conn ([type]): [description]
+    """
     try:
         node_conn.disconnect()
     except Exception as res_err:
@@ -78,12 +81,42 @@ def disconnect(node_conn):
 
 
 def netconfconn(args, ncusername, ncpassword):
+    """[summary]
+
+    Args:
+        args ([type]): [description]
+        ncusername ([type]): [description]
+        ncpassword ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
     conn = manager.connect(
         host=args.node,
         port=args.port,
         username=ncusername,
         password=ncpassword,
         hostkey_verify=False,
-        device_params={"name": "alu"},
+        device_params={"name": "sros"},
+        timeout=300,
     )
     return conn
+
+
+def get_netconf_config(args: Dict, ncusername: str, ncpassword: str):
+    """[summary]
+
+    Args:
+        args (Dict): [description]
+        ncusername (str): [description]
+        ncpassword (str): [description]
+    """
+
+    # Now let's connect to the device via NETCONF and pull the config to validate.
+    nc_conn = netconfconn(args, ncusername, ncpassword)
+    # Retrieve the XML Config
+    config = nc_conn.get_config(source="running")
+    # Close NETCONF session
+    nc_conn.close_session()
+    # save_file("temp-config.xml", str(config), mode="w+")
+    return str(config)
