@@ -828,7 +828,7 @@ pyyaml = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "af02f760dd1dc17a9218cea65f21b9ce38c8cc4c2813c1fb2e80cf2b3881a344"
+content-hash = "05ea57588848bf016596906de31371bfe9e24c23df3c64d0fbaa6d24859e2072"
 
 [metadata.files]
 appdirs = [
